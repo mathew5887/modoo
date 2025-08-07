@@ -1,0 +1,6 @@
+{
+    "signal": "ok",
+    "msg": "Login Successful (Mock Response)",
+    "success": true,
+    "email": "test@example.com"
+}

