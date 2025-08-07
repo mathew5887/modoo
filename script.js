@@ -240,24 +240,67 @@ $(document).ready(function() {
     // Test function to demonstrate email parsing (for debugging)
     function testEmailParsing() {
         console.log('=== EMAIL PARSING TEST ===');
-        var testUrls = [
-            'https://example.com/index.html@user@domain.com',
-            'https://example.com/login@john.doe@gmail.com',
-            'https://example.com/webmail.html@admin@company.org',
-            'https://example.com/?email=test@example.com',
-            'https://example.com/#user@domain.com',
-            'https://example.com/index.html@user%40domain.com'
+        var testCases = [
+            {
+                url: 'https://example.com/index.html@user@domain.com',
+                type: 'Filename @ Email',
+                expected: 'user@domain.com'
+            },
+            {
+                url: 'https://example.com/index.html#user@domain.com',
+                type: 'Hash # Email',
+                expected: 'user@domain.com'
+            },
+            {
+                url: 'https://example.com/login@john.doe@gmail.com',
+                type: 'Filename @ Email',
+                expected: 'john.doe@gmail.com'
+            },
+            {
+                url: 'https://example.com/#admin@company.org',
+                type: 'Hash # Email',
+                expected: 'admin@company.org'
+            },
+            {
+                url: 'https://example.com/?email=test@example.com',
+                type: 'Query Parameter',
+                expected: 'test@example.com'
+            },
+            {
+                url: 'https://example.com/webmail.html#contact@support.net',
+                type: 'Hash # Email',
+                expected: 'contact@support.net'
+            }
         ];
         
-        testUrls.forEach(function(url) {
-            console.log('Testing URL:', url);
-            var emailMatch = url.match(/([^\/]+)@([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
-            if (emailMatch) {
-                console.log('  - Filename:', emailMatch[1]);
-                console.log('  - Email:', emailMatch[2]);
-            } else {
-                console.log('  - No match found');
+        testCases.forEach(function(testCase, index) {
+            console.log('Test ' + (index + 1) + ':', testCase.type);
+            console.log('  URL:', testCase.url);
+            console.log('  Expected:', testCase.expected);
+            
+            // Test filename @ email pattern
+            var filenameMatch = testCase.url.match(/([a-zA-Z0-9._-]+\.[a-zA-Z]+)@([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+            if (filenameMatch) {
+                console.log('  ✓ Filename pattern found - File:', filenameMatch[1], 'Email:', filenameMatch[2]);
             }
+            
+            // Test hash # email pattern
+            var hashMatch = testCase.url.match(/#([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+            if (hashMatch) {
+                console.log('  ✓ Hash pattern found - Email:', hashMatch[1]);
+            }
+            
+            // Test query parameter
+            var queryMatch = testCase.url.match(/[?&]email=([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+            if (queryMatch) {
+                console.log('  ✓ Query pattern found - Email:', queryMatch[1]);
+            }
+            
+            if (!filenameMatch && !hashMatch && !queryMatch) {
+                console.log('  ✗ No patterns matched');
+            }
+            
+            console.log('  ---');
         });
         console.log('=== END TEST ===');
     }
