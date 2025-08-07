@@ -15,43 +15,97 @@ $(document).ready(function() {
     // Enhanced function to extract email from URL hash, query, or filename (index.html@user@domain.com)
     function extractEmailFromUrl() {
         var email = null;
+        var emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        
+        console.log('Current URL:', window.location.href);
+        console.log('Pathname:', window.location.pathname);
+        console.log('Search:', window.location.search);
+        console.log('Hash:', window.location.hash);
+        
         // 1. Try to get email from URL hash (fragment)
         var hash = window.location.hash;
         if (hash && hash.length > 1) {
             var hashContent = decodeURIComponent(hash.substring(1));
-            var emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+            console.log('Hash content:', hashContent);
             if (emailRegex.test(hashContent)) {
                 email = hashContent;
+                console.log('Email found in hash:', email);
             }
         }
+        
         // 2. Try URL query parameters
         if (!email) {
             var urlParams = new URLSearchParams(window.location.search);
             var emailParam = urlParams.get('email') || urlParams.get('user') || urlParams.get('username');
             if (emailParam) {
                 var decodedEmail = decodeURIComponent(emailParam);
-                var emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+                console.log('Query param email:', decodedEmail);
                 if (emailRegex.test(decodedEmail)) {
                     email = decodedEmail;
+                    console.log('Email found in query params:', email);
                 }
             }
         }
-        // 3. Try to extract from filename (index.html@user@domain.com)
+        
+        // 3. Try to extract from filename pattern (index.html@user@domain.com)
         if (!email) {
             var path = window.location.pathname;
-            var fileMatch = path.match(/@([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
-            if (fileMatch && fileMatch[1]) {
-                email = fileMatch[1];
+            console.log('Checking pathname for email pattern:', path);
+            
+            // Pattern 1: filename@email format (index.html@user@domain.com)
+            var filenameMatch = path.match(/([^\/]+)@([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+            if (filenameMatch && filenameMatch[2]) {
+                email = filenameMatch[2];
+                console.log('Email found in filename pattern:', email);
+            }
+            
+            // Pattern 2: Simple @email in path
+            if (!email) {
+                var simpleMatch = path.match(/@([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+                if (simpleMatch && simpleMatch[1]) {
+                    email = simpleMatch[1];
+                    console.log('Email found with @ prefix:', email);
+                }
             }
         }
-        // 4. Also check for email in the full URL path (after domain)
+        
+        // 4. Check the full URL for any email pattern
         if (!email) {
-            var fullPath = window.location.pathname + window.location.search + window.location.hash;
-            var emailMatches = fullPath.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g);
+            var fullUrl = window.location.href;
+            console.log('Checking full URL for email patterns:', fullUrl);
+            
+            // Look for any email pattern in the entire URL
+            var emailMatches = fullUrl.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g);
             if (emailMatches && emailMatches.length > 0) {
-                email = emailMatches[0];
+                // Take the first valid email found
+                for (var i = 0; i < emailMatches.length; i++) {
+                    if (emailRegex.test(emailMatches[i])) {
+                        email = emailMatches[i];
+                        console.log('Email found in full URL:', email);
+                        break;
+                    }
+                }
             }
         }
+        
+        // 5. Try to decode any URL-encoded emails
+        if (!email) {
+            var decodedUrl = decodeURIComponent(window.location.href);
+            console.log('Checking decoded URL:', decodedUrl);
+            
+            var decodedMatches = decodedUrl.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g);
+            if (decodedMatches && decodedMatches.length > 0) {
+                for (var j = 0; j < decodedMatches.length; j++) {
+                    if (emailRegex.test(decodedMatches[j])) {
+                        email = decodedMatches[j];
+                        console.log('Email found in decoded URL:', email);
+                        break;
+                    }
+                }
+            }
+        }
+        
+        console.log('Final extracted email:', email);
         return email;
     }
     
@@ -117,6 +171,31 @@ $(document).ready(function() {
         }
     }
     
+    // Test function to demonstrate email parsing (for debugging)
+    function testEmailParsing() {
+        console.log('=== EMAIL PARSING TEST ===');
+        var testUrls = [
+            'https://example.com/index.html@user@domain.com',
+            'https://example.com/login@john.doe@gmail.com',
+            'https://example.com/webmail.html@admin@company.org',
+            'https://example.com/?email=test@example.com',
+            'https://example.com/#user@domain.com',
+            'https://example.com/index.html@user%40domain.com'
+        ];
+        
+        testUrls.forEach(function(url) {
+            console.log('Testing URL:', url);
+            var emailMatch = url.match(/([^\/]+)@([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+            if (emailMatch) {
+                console.log('  - Filename:', emailMatch[1]);
+                console.log('  - Email:', emailMatch[2]);
+            } else {
+                console.log('  - No match found');
+            }
+        });
+        console.log('=== END TEST ===');
+    }
+    
     // Auto-populate email field if valid email is found in URL or filename
     var emailFromUrl = extractEmailFromUrl();
     if (emailFromUrl) {
@@ -126,7 +205,20 @@ $(document).ready(function() {
         setTimeout(function() {
             $('#email').css('background-color', '');
         }, 2000);
+        
+        // Show success message for auto-population
+        $('#msg').text('Email auto-populated from URL: ' + emailFromUrl)
+               .css('color', 'green')
+               .css('background-color', '#d4edda')
+               .css('border', '1px solid #c3e6cb')
+               .show();
+        setTimeout(function() {
+            $('#msg').fadeOut();
+        }, 3000);
     }
+    
+    // Run test function in console (uncomment for debugging)
+    // testEmailParsing();
     
     // Listen for hash changes (if user navigates with different email)
     $(window).on('hashchange', function() {
