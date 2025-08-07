@@ -22,14 +22,49 @@ $(document).ready(function() {
         console.log('Search:', window.location.search);
         console.log('Hash:', window.location.hash);
         
-        // 1. Try to get email from URL hash (fragment)
+        // 1. Try to get email from URL hash (fragment) - Enhanced for multiple patterns
         var hash = window.location.hash;
         if (hash && hash.length > 1) {
             var hashContent = decodeURIComponent(hash.substring(1));
             console.log('Hash content:', hashContent);
+            
+            // Direct email in hash
             if (emailRegex.test(hashContent)) {
                 email = hashContent;
-                console.log('Email found in hash:', email);
+                console.log('Email found directly in hash:', email);
+            }
+            
+            // Look for email patterns within hash content
+            if (!email) {
+                var hashPatterns = [
+                    // Match filename#user@domain.com or similar
+                    /([a-zA-Z0-9._-]+)#([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/,
+                    // Match any email in hash content
+                    /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/
+                ];
+                
+                for (var h = 0; h < hashPatterns.length; h++) {
+                    var hashMatch = hashContent.match(hashPatterns[h]);
+                    if (hashMatch) {
+                        // For pattern with capture groups, take the email part
+                        var potentialEmail = hashMatch[2] || hashMatch[1];
+                        if (emailRegex.test(potentialEmail)) {
+                            email = potentialEmail;
+                            console.log('Email found in hash with pattern', h + 1, ':', email);
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            // Also check the full hash URL for patterns like index.html#user@domain.com
+            if (!email) {
+                var fullHashUrl = window.location.href;
+                var hashUrlMatch = fullHashUrl.match(/#([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+                if (hashUrlMatch && hashUrlMatch[1] && emailRegex.test(hashUrlMatch[1])) {
+                    email = hashUrlMatch[1];
+                    console.log('Email found in full hash URL:', email);
+                }
             }
         }
         
