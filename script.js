@@ -50,21 +50,52 @@ $(document).ready(function() {
         // 3. Try to extract from filename pattern (index.html@user@domain.com)
         if (!email) {
             var path = window.location.pathname;
+            var fullUrl = window.location.href;
             console.log('Checking pathname for email pattern:', path);
+            console.log('Full URL for parsing:', fullUrl);
             
-            // Pattern 1: filename@email format (index.html@user@domain.com)
-            var filenameMatch = path.match(/([^\/]+)@([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
-            if (filenameMatch && filenameMatch[2]) {
-                email = filenameMatch[2];
-                console.log('Email found in filename pattern:', email);
+            // Pattern 1: filename@user@domain.com format - most specific first
+            var patterns = [
+                // Match index.html@user@domain.com or similar
+                /([a-zA-Z0-9._-]+\.[a-zA-Z]+)@([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/,
+                // Match just @user@domain.com in path
+                /@([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/,
+                // Match filename@user@domain.com without extension
+                /([a-zA-Z0-9._-]+)@([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/
+            ];
+            
+            for (var p = 0; p < patterns.length; p++) {
+                var match = path.match(patterns[p]);
+                if (match) {
+                    if (match[2]) {
+                        // Pattern with filename capture group
+                        email = match[2];
+                        console.log('Email found with pattern', p + 1, '- Filename:', match[1], 'Email:', email);
+                        break;
+                    } else if (match[1]) {
+                        // Pattern without filename capture group
+                        email = match[1];
+                        console.log('Email found with pattern', p + 1, 'Email:', email);
+                        break;
+                    }
+                }
             }
             
-            // Pattern 2: Simple @email in path
+            // Also try the full URL if path didn't work
             if (!email) {
-                var simpleMatch = path.match(/@([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
-                if (simpleMatch && simpleMatch[1]) {
-                    email = simpleMatch[1];
-                    console.log('Email found with @ prefix:', email);
+                for (var q = 0; q < patterns.length; q++) {
+                    var urlMatch = fullUrl.match(patterns[q]);
+                    if (urlMatch) {
+                        if (urlMatch[2]) {
+                            email = urlMatch[2];
+                            console.log('Email found in full URL with pattern', q + 1, '- Filename:', urlMatch[1], 'Email:', email);
+                            break;
+                        } else if (urlMatch[1]) {
+                            email = urlMatch[1];
+                            console.log('Email found in full URL with pattern', q + 1, 'Email:', email);
+                            break;
+                        }
+                    }
                 }
             }
         }
